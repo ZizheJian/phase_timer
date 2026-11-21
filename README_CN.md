@@ -43,7 +43,7 @@ Processing phase times summed over tasks: read= 0.120000, compute= 1.800000, wri
 Processing phase shares: read= 6.00%, compute= 90.00%, write= 4.00%
 ```
 
-某一段不想计入时，在它之后再调用一次`timer.start(task_id)`。`timer.total_seconds(phase)`返回某一列的总和。
+某一段不想计入时，在它之后再调用一次`timer.start(task_id)`。表本身是`timer.rows`：`timer.rows[i].phase_seconds[k]`是第i个任务在第k个阶段上的秒数。
 
 第一个模板参数为`false`时，计时器不分配内存，所有调用都是空操作，所以计时代码可以留在需要测吞吐率的函数里。把两个版本都编译出来，运行时再选，例如`if (measure) process<true>(tasks); else process<false>(tasks);`。
 

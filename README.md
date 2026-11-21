@@ -43,7 +43,7 @@ Processing phase times summed over tasks: read= 0.120000, compute= 1.800000, wri
 Processing phase shares: read= 6.00%, compute= 90.00%, write= 4.00%
 ```
 
-To skip a section that should not be counted, call `timer.start(task_id)` again after it. `timer.total_seconds(phase)` returns the sum of one column.
+To skip a section that should not be counted, call `timer.start(task_id)` again after it. The table itself is `timer.rows`: `timer.rows[i].phase_seconds[k]` holds the seconds task `i` spent in phase `k`.
 
 When the first template argument is `false`, the timer allocates nothing and every call is a no-op, so the timing code can stay in a function whose throughput is measured. Compile both versions and choose one at run time, for example with `if (measure) process<true>(tasks); else process<false>(tasks);`.
 

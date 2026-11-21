@@ -63,15 +63,6 @@ class phase_timer
             }
         }
 
-        // 第phase列的总和，也就是所有任务在第phase个阶段上的秒数之和
-        double total_seconds(size_t phase) const
-        {
-            double sum=0;
-            for (auto &row:rows)
-                sum+=row.phase_seconds[phase];
-            return sum;
-        }
-
         // 打印两行，第一行是每个阶段的总秒数，第二行是各阶段占的比例，例如：
         //   Processing phase times summed over tasks: read= 0.1, compute= 0.3 seconds
         //   Processing phase shares: read= 25.00%, compute= 75.00%
@@ -79,10 +70,15 @@ class phase_timer
         {
             if constexpr(enabled)
             {
-                std::array<double,phase_num> phase_total_seconds;
+                // 每一列的总和，以及所有阶段加起来的总秒数
+                std::array<double,phase_num> phase_total_seconds{};
                 double all_phase_seconds=0;
-                for (size_t phase=0;phase<phase_num;phase++)
-                    all_phase_seconds+=phase_total_seconds[phase]=total_seconds(phase);
+                for (auto &row:rows)
+                    for (size_t phase=0;phase<phase_num;phase++)
+                    {
+                        phase_total_seconds[phase]+=row.phase_seconds[phase];
+                        all_phase_seconds+=row.phase_seconds[phase];
+                    }
                 printf("%s phase times summed over tasks:",title);
                 for (size_t phase=0;phase<phase_num;phase++)
                     printf("%s %s= %f",phase==0?"":",",phase_names[phase],phase_total_seconds[phase]);
