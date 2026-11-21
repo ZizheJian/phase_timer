@@ -38,8 +38,9 @@ class phase_timer
         std::array<const char*,phase_num> phase_names; // 各阶段的名字，打印时用
         std::vector<task_row> rows; // 整张表，第i行对应第i个任务
 
-        phase_timer(std::array<const char*,phase_num> phase_names,size_t task_num):phase_names(phase_names)
+        phase_timer(std::array<const char*,phase_num> phase_names,size_t task_num)
         {
+            this->phase_names=phase_names;
             if constexpr(enabled)
                 rows.resize(task_num);
         }
