@@ -33,30 +33,30 @@ int main()
     enum {a_phase,b_phase};
     // 关闭时什么都不记录
     phase_timer<false,2> disabled({"a","b"},4);
-    auto disabled_lap=disabled.task(0);
-    disabled_lap.lap(a_phase);
-    check(disabled.total(a_phase)==0,"disabled timer records time");
+    auto disabled_timer=disabled.start_task(0);
+    disabled_timer.end_phase(a_phase);
+    check(disabled.total_seconds(a_phase)==0,"disabled timer records time");
     // 串行：阶段时间与在同样位置自己记录的时间一致。机器很忙时两者都会变长，但仍应一致
     phase_timer<true,2> serial({"a","b"},1);
-    auto lap_timer=serial.task(0);
+    auto task_timer=serial.start_task(0);
     double t0=now();
     busy(0.05);
-    lap_timer.lap(a_phase);
+    task_timer.end_phase(a_phase);
     double t1=now();
     busy(0.15);
-    lap_timer.lap(b_phase);
+    task_timer.end_phase(b_phase);
     double t2=now();
-    check(std::fabs(serial.total(a_phase)-(t1-t0))<1e-3,"serial phase a",serial.total(a_phase)-(t1-t0));
-    check(std::fabs(serial.total(b_phase)-(t2-t1))<1e-3,"serial phase b",serial.total(b_phase)-(t2-t1));
+    check(std::fabs(serial.total_seconds(a_phase)-(t1-t0))<1e-3,"serial phase a",serial.total_seconds(a_phase)-(t1-t0));
+    check(std::fabs(serial.total_seconds(b_phase)-(t2-t1))<1e-3,"serial phase b",serial.total_seconds(b_phase)-(t2-t1));
     // restart()之前的时间不计入
     phase_timer<true,2> restarted({"a","b"},1);
-    auto restarted_lap=restarted.task(0);
+    auto restarted_timer=restarted.start_task(0);
     busy(0.05);
     double t3=now();
-    restarted_lap.restart();
+    restarted_timer.restart();
     busy(0.02);
-    restarted_lap.lap(a_phase);
-    check(std::fabs(restarted.total(a_phase)-(now()-t3))<1e-3,"time before restart() is counted",restarted.total(a_phase));
+    restarted_timer.end_phase(a_phase);
+    check(std::fabs(restarted.total_seconds(a_phase)-(now()-t3))<1e-3,"time before restart() is counted",restarted.total_seconds(a_phase));
     // 多线程：每个线程用自己任务的计时器，结果等于各线程自己记录的时间之和
     const int thread_num=4;
     phase_timer<true,2> parallel({"a","b"},thread_num);
@@ -65,13 +65,13 @@ int main()
     for (int t=0;t<thread_num;t++)
         threads[t]=std::thread([&,t]
         {
-            auto thread_lap=parallel.task(t);
+            auto thread_timer=parallel.start_task(t);
             double begin=now();
             busy(0.02);
-            thread_lap.lap(a_phase);
+            thread_timer.end_phase(a_phase);
             double middle=now();
             busy(0.04);
-            thread_lap.lap(b_phase);
+            thread_timer.end_phase(b_phase);
             own_a[t]=middle-begin;
             own_b[t]=now()-middle;
         });
@@ -83,8 +83,8 @@ int main()
         sum_a+=own_a[t];
         sum_b+=own_b[t];
     }
-    check(std::fabs(parallel.total(a_phase)-sum_a)<1e-3*thread_num,"parallel phase a",parallel.total(a_phase)-sum_a);
-    check(std::fabs(parallel.total(b_phase)-sum_b)<1e-3*thread_num,"parallel phase b",parallel.total(b_phase)-sum_b);
+    check(std::fabs(parallel.total_seconds(a_phase)-sum_a)<1e-3*thread_num,"parallel phase a",parallel.total_seconds(a_phase)-sum_a);
+    check(std::fabs(parallel.total_seconds(b_phase)-sum_b)<1e-3*thread_num,"parallel phase b",parallel.total_seconds(b_phase)-sum_b);
     parallel.print("Test");
     printf(failures==0?"All tests passed\n":"%d tests failed\n",failures);
     return failures!=0;
