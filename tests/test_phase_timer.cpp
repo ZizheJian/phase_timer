@@ -33,31 +33,31 @@ int main()
     enum {a_phase,b_phase};
     // 关闭时什么都不记录
     phase_timer<false,2> disabled({"a","b"},4);
-    auto disabled_timer=disabled.start_task(0);
-    disabled_timer.end_phase(a_phase);
-    check(disabled.total_seconds(a_phase)==0,"disabled timer records time");
-    // 串行：阶段时间与在同样位置自己记录的时间一致。机器很忙时两者都会变长，但仍应一致
+    disabled.start(0);
+    disabled.end_phase(0,a_phase);
+    check(disabled.total_seconds(a_phase)==0 and disabled.rows.empty(),"disabled timer records time");
+    // 串行：表中的时间与在同样位置自己记录的时间一致。机器很忙时两者都会变长，但仍应一致
     phase_timer<true,2> serial({"a","b"},1);
-    auto task_timer=serial.start_task(0);
+    serial.start(0);
     double t0=now();
     busy(0.05);
-    task_timer.end_phase(a_phase);
+    serial.end_phase(0,a_phase);
     double t1=now();
     busy(0.15);
-    task_timer.end_phase(b_phase);
+    serial.end_phase(0,b_phase);
     double t2=now();
     check(std::fabs(serial.total_seconds(a_phase)-(t1-t0))<1e-3,"serial phase a",serial.total_seconds(a_phase)-(t1-t0));
     check(std::fabs(serial.total_seconds(b_phase)-(t2-t1))<1e-3,"serial phase b",serial.total_seconds(b_phase)-(t2-t1));
-    // restart()之前的时间不计入
+    // 再次调用start()会丢掉之前经过的时间
     phase_timer<true,2> restarted({"a","b"},1);
-    auto restarted_timer=restarted.start_task(0);
+    restarted.start(0);
     busy(0.05);
     double t3=now();
-    restarted_timer.restart();
+    restarted.start(0);
     busy(0.02);
-    restarted_timer.end_phase(a_phase);
-    check(std::fabs(restarted.total_seconds(a_phase)-(now()-t3))<1e-3,"time before restart() is counted",restarted.total_seconds(a_phase));
-    // 多线程：每个线程用自己任务的计时器，结果等于各线程自己记录的时间之和
+    restarted.end_phase(0,a_phase);
+    check(std::fabs(restarted.total_seconds(a_phase)-(now()-t3))<1e-3,"time before the second start() is counted",restarted.total_seconds(a_phase));
+    // 多线程：每个线程写自己的一行，每列总和等于各线程自己记录的时间之和
     const int thread_num=4;
     phase_timer<true,2> parallel({"a","b"},thread_num);
     std::thread threads[thread_num];
@@ -65,13 +65,13 @@ int main()
     for (int t=0;t<thread_num;t++)
         threads[t]=std::thread([&,t]
         {
-            auto thread_timer=parallel.start_task(t);
+            parallel.start(t);
             double begin=now();
             busy(0.02);
-            thread_timer.end_phase(a_phase);
+            parallel.end_phase(t,a_phase);
             double middle=now();
             busy(0.04);
-            thread_timer.end_phase(b_phase);
+            parallel.end_phase(t,b_phase);
             own_a[t]=middle-begin;
             own_b[t]=now()-middle;
         });
@@ -85,6 +85,8 @@ int main()
     }
     check(std::fabs(parallel.total_seconds(a_phase)-sum_a)<1e-3*thread_num,"parallel phase a",parallel.total_seconds(a_phase)-sum_a);
     check(std::fabs(parallel.total_seconds(b_phase)-sum_b)<1e-3*thread_num,"parallel phase b",parallel.total_seconds(b_phase)-sum_b);
+    // 每行单独占64字节的整数倍
+    check(sizeof(phase_timer<true,7>::task_row)%64==0,"rows are not padded to cache lines");
     parallel.print("Test");
     printf(failures==0?"All tests passed\n":"%d tests failed\n",failures);
     return failures!=0;
