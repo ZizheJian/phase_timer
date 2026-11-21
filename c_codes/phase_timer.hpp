@@ -13,16 +13,31 @@
 template<bool enabled,size_t phase_num>
 class phase_timer
 {
+    private:
+        // 每个任务的累加器单独占一块64字节对齐的内存。CPU缓存按64字节一块读写，不对齐时不同线程写相邻任务会互相拖慢
+        struct alignas(64) task_time
+        {
+            std::array<double,phase_num> times{};
+        };
+        std::array<const char*,phase_num> phase_names;
+        std::vector<task_time> task_times;
+
     public:
         class lap_timer
         {
+            private:
+                double *times;
+                double last_time=0;
+
             public:
                 explicit lap_timer(double *times):times(times){restart();}
+
                 void restart()
                 {
                     if constexpr(enabled)
                         last_time=now();
                 }
+
                 void lap(size_t phase)
                 {
                     if constexpr(enabled)
@@ -32,9 +47,8 @@ class phase_timer
                         last_time=current;
                     }
                 }
+
             private:
-                double *times;
-                double last_time=0;
                 static double now()
                 {
                     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -85,13 +99,4 @@ class phase_timer
                 printf("\n");
             }
         }
-
-    private:
-        // 每个任务的累加器单独占一块64字节对齐的内存。CPU缓存按64字节一块读写，不对齐时不同线程写相邻任务会互相拖慢
-        struct alignas(64) task_time
-        {
-            std::array<double,phase_num> times{};
-        };
-        std::array<const char*,phase_num> phase_names;
-        std::vector<task_time> task_times;
 };
