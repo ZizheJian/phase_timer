@@ -1,3 +1,2 @@
-__pycache__/
-*.py[cod]
 build/
+tests/test_phase_timer
